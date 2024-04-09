@@ -3,10 +3,8 @@ from typing import Generator, Iterable
 
 from tsk.util import make, need
 
-Tsk = Generator[need | make | 'Tsk', None, None]
 
-
-def run(tsks: Iterable[Tsk]):
+def run(tsks: Iterable[Generator]):
     tsks = deque(tsks)
     wait = defaultdict(list)
     done = set()
@@ -19,24 +17,21 @@ def run(tsks: Iterable[Tsk]):
             if isinstance(res, need) and res.val not in done:
                 wait[res.val].append(tsk)
 
-            elif isinstance(res, make):
-                done.add(make.val)
-                for w in wait.pop(make.val, []):
+            if isinstance(res, make):
+                done.add(res.val)
+                for w in wait.pop(res.val, []):
                     tsks.append(w)
                 tsks.append(tsk)
 
-            elif isinstance(res, Generator):
+            if isinstance(res, Generator):
                 tsks.append(res)
                 tsks.append(tsk)
-
-            else:
-                raise ValueError('Invalid tsk result.')
 
         except StopIteration:
             pass
 
     if wait:
-        print('Could not finish all tasks.')
+        print(f'Could not finish all tasks. {wait}')
 
     else:
         print('All tasks finished.')

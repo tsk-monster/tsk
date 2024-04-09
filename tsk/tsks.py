@@ -27,22 +27,35 @@ def tsk(
 
 def shell(
         cmd: str, *,
-        deps: List[Path] = [],
-        targets: List[Path] = []):
+        need: List[Path] = [],
+        make: List[Path] = []):
 
-    return tsk(lambda: os.system(cmd), need=deps, make=targets)
+    return tsk(lambda: os.system(cmd), need=need, make=make)
+
+
+def echo(txt: str):
+    yield print(txt)
 
 
 if __name__ == '__main__':
     tmp1_txt = Path('tmp1.txt')
     tmp2_txt = Path('tmp2.txt')
 
+    def echo_lines(file: Path):
+        yield utl.need(file)
+
+        with open(file) as f:
+            for line in f:
+                yield echo(line)
+
     run([
+        echo_lines(tmp1_txt),
+
         shell(
-            'touch tmp1.txt',
-            targets=[tmp1_txt]),
+            'echo baba >  tmp1.txt',
+            make=[tmp1_txt]),
 
         shell(
             'touch tmp2.txt',
-            deps=[tmp2_txt],
-            targets=[tmp1_txt])])
+            need=[tmp1_txt],
+            make=[tmp2_txt])])
