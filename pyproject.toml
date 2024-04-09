@@ -17,6 +17,7 @@ autopep8 = "^2.1.0"
 isort = "^5.13.2"
 pytest = "^8.1.1"
 pyright = "^1.1.357"
+pre-commit = "^3.7.0"
 
 [tool.poetry.dependencies]
 python = "3.10.*"
