@@ -2,16 +2,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+
 @dataclass
 class need:
-    val:Any
+    val: Any
+
 
 @dataclass
 class make:
-    val:Any
+    val: Any
 
 
-def change(path: str | Path):
+def changed(path: str | Path):
     try:
         path = Path(path)
         tsk = path.with_suffix('.tsk')

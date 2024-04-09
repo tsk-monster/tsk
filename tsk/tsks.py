@@ -16,7 +16,7 @@ def tsk(
     for d in need:
         yield utl.need(d)
 
-    if any(map(utl.change, need)) or not all(map(Path.exists, make)):
+    if any(map(utl.changed, need)) or not all(map(Path.exists, make)):
         action()
 
     assert all(map(Path.exists, make)), 'Failed to create targets.'
