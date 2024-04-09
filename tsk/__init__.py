@@ -1,10 +1,12 @@
 from collections import defaultdict, deque
-from typing import Any, Generator, Iterable, Tuple
+from typing import Generator, Iterable
 
-tsk = Generator[Tuple[bool, Any], None, None]
+from tsk.util import make, need
+
+Tsk = Generator[need | make | 'Tsk', None, None]
 
 
-def run(tsks: Iterable[tsk]):
+def run(tsks: Iterable[Tsk]):
     tsks = deque(tsks)
     wait = defaultdict(list)
     done = set()
@@ -12,19 +14,30 @@ def run(tsks: Iterable[tsk]):
     while tsks:
         try:
             tsk = tsks.popleft()
-            need, val = next(tsk)
-            if need and val not in done:
-                wait[val].append(tsk)
-            else:
-                done.add(val)
-                for w in wait.pop(val, []):
+            res = next(tsk)
+
+            if isinstance(res, need) and res.val not in done:
+                wait[res.val].append(tsk)
+
+            elif isinstance(res, make):
+                done.add(make.val)
+                for w in wait.pop(make.val, []):
                     tsks.append(w)
                 tsks.append(tsk)
+
+            elif isinstance(res, Generator):
+                tsks.append(res)
+                tsks.append(tsk)
+
+            else:
+                raise ValueError('Invalid tsk result.')
+
         except StopIteration:
             pass
 
     if wait:
         print('Could not finish all tasks.')
+
     else:
         print('All tasks finished.')
 

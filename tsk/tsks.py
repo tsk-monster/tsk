@@ -1,23 +1,36 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import Any, Callable, Generator, List, Tuple
 
+import tsk.util as utl
 from tsk import run
-from tsk.util import change, need, push
+
+Tsk = Generator[Tuple[bool, Any], None, None]
 
 
-def shell(cmd: str, *, deps: List[Path] = [], targets: List[Path] = []):
-    for d in deps:
-        yield need(d)
+def tsk(
+        action: Callable, *,
+        need: List[Path] = [],
+        make: List[Path] = []):
 
-    if any(map(change, deps)) or not all(map(Path.exists, targets)):
-        print('Executing:', cmd)
-        os.system(cmd)
+    for d in need:
+        yield utl.need(d)
 
-    assert all(map(Path.exists, targets)), 'Failed to create targets.'
+    if any(map(utl.change, need)) or not all(map(Path.exists, make)):
+        action()
 
-    for t in targets:
-        yield push(t)
+    assert all(map(Path.exists, make)), 'Failed to create targets.'
+
+    for t in make:
+        yield utl.make(t)
+
+
+def shell(
+        cmd: str, *,
+        deps: List[Path] = [],
+        targets: List[Path] = []):
+
+    return tsk(lambda: os.system(cmd), need=deps, make=targets)
 
 
 if __name__ == '__main__':

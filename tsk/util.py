@@ -1,13 +1,14 @@
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
+@dataclass
+class need:
+    val:Any
 
-def need(val):
-    return (True, val)
-
-
-def push(val):
-    return (False, val)
+@dataclass
+class make:
+    val:Any
 
 
 def change(path: str | Path):
