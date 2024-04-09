@@ -9,6 +9,14 @@ readme = "README.md"
 python = "3.10.*"
 
 
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.3.5"
+rope = "^1.13.0"
+autopep8 = "^2.1.0"
+isort = "^5.13.2"
+pytest = "^8.1.1"
+pyright = "^1.1.357"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
