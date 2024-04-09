@@ -1,19 +1,35 @@
 import os
 from pathlib import Path
+from typing import List
 
-from tsk.util import change, pull, push
+from tsk import run
+from tsk.util import change, need, push
 
 
-def shell(cmd, *, deps=[], prods=[]):
+def shell(cmd: str, *, deps: List[Path] = [], targets: List[Path] = []):
     for d in deps:
-        yield pull(d)
+        yield need(d)
 
-    os.system(cmd)
+    if any(map(change, deps)) or not all(map(Path.exists, targets)):
+        print('Executing:', cmd)
+        os.system(cmd)
 
-    for p in prods:
-        yield push(p)
+    assert all(map(Path.exists, targets)), 'Failed to create targets.'
+
+    for t in targets:
+        yield push(t)
 
 
 if __name__ == '__main__':
-    print(change(Path('tmp.txt')))
-    print(change(Path('tmp.txt')))
+    tmp1_txt = Path('tmp1.txt')
+    tmp2_txt = Path('tmp2.txt')
+
+    run([
+        shell(
+            'touch tmp1.txt',
+            targets=[tmp1_txt]),
+
+        shell(
+            'touch tmp2.txt',
+            deps=[tmp2_txt],
+            targets=[tmp1_txt])])
