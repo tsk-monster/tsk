@@ -1,28 +1,35 @@
-import os
+import asyncio
+import logging
 from pathlib import Path
-from typing import Any, Callable, Generator, List, Tuple
+from typing import Awaitable, Callable, List
 
 import tsk.util as utl
-from tsk import run
+from tsk import Tsk, plan
 
-Tsk = Generator[Tuple[bool, Any], None, None]
+lg = logging.getLogger(__name__)
 
 
 def tsk(
-        action: Callable, *,
+        name: str, action: Callable[[], Awaitable], *,
         need: List[Path] = [],
         make: List[Path] = []):
 
-    for d in need:
-        yield utl.need(d)
+    async def gen():
+        always_run = len(need) == len(make) == 0
 
-    if any(map(utl.changed, need)) or not all(map(Path.exists, make)):
-        action()
+        for n in need:
+            yield utl.need(n)
 
-    assert all(map(Path.exists, make)), 'Failed to create targets.'
+        if any(map(utl.changed, need)) or not all(map(Path.exists, make)) or always_run:
+            await action()
 
-    for t in make:
-        yield utl.make(t)
+        for m in make:
+            if m.exists():
+                yield utl.make(m)
+            else:
+                lg.warning(f'Failed to make {m}.')
+
+    return Tsk(name, gen())
 
 
 def shell(
@@ -30,32 +37,20 @@ def shell(
         need: List[Path] = [],
         make: List[Path] = []):
 
-    return tsk(lambda: os.system(cmd), need=need, make=make)
-
-
-def echo(txt: str):
-    yield print(txt)
+    return tsk(
+        cmd, lambda: asyncio.create_subprocess_shell(cmd),
+        need=need,
+        make=make)
 
 
 if __name__ == '__main__':
-    tmp1_txt = Path('tmp1.txt')
-    tmp2_txt = Path('tmp2.txt')
+    logging.basicConfig(level=logging.INFO)
 
-    def echo_lines(file: Path):
-        yield utl.need(file)
-
-        with open(file) as f:
-            for line in f:
-                yield echo(line)
-
-    run([
-        echo_lines(tmp1_txt),
-
-        shell(
-            'echo baba >  tmp1.txt',
-            make=[tmp1_txt]),
-
-        shell(
-            'touch tmp2.txt',
-            need=[tmp1_txt],
-            make=[tmp2_txt])])
+    asyncio.run(
+        plan([
+            shell('wget https://picsum.photos/200'),
+            shell('wget https://picsum.photos/200'),
+            shell('wget https://picsum.photos/200'),
+            shell('wget https://picsum.photos/200'),
+            shell('wget https://picsum.photos/200'),
+        ]))
