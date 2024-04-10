@@ -18,10 +18,3 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-
-      - id: poetry
-        name: poetry
-        entry: poetry lock
-        language: system
-        pass_filenames: false
-        always_run: true

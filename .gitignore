@@ -1,8 +1,6 @@
+node_modules
 .vscode
 
-*.gz
-*.jpg
-*.pyc
-*.tsk
-*.txt
 *.whl
+*.gz
+*.pyc
