@@ -1,8 +1,8 @@
 .vscode
 
-
+*.gz
+*.jpg
 *.pyc
 *.tsk
 *.txt
-*.gz
 *.whl
