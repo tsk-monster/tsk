@@ -3,8 +3,8 @@ import logging
 from pathlib import Path
 from typing import Awaitable, Callable, List
 
-import tsk.util as utl
-from tsk import Tsk, plan
+import tsk_monster.util as utl
+from tsk_monster import Tsk, plan
 
 lg = logging.getLogger(__name__)
 
@@ -48,9 +48,7 @@ if __name__ == '__main__':
 
     asyncio.run(
         plan([
-            shell('wget https://picsum.photos/200'),
-            shell('wget https://picsum.photos/200'),
-            shell('wget https://picsum.photos/200'),
-            shell('wget https://picsum.photos/200'),
-            shell('wget https://picsum.photos/200'),
+            shell('echo baba'),
+            shell('echo lala'),
+            shell('echo gaga'),
         ]))

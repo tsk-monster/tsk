@@ -4,7 +4,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import AsyncGenerator, Iterable
 
-from tsk.util import make, need
+from tsk_monster.util import make, need
 
 lg = logging.getLogger(__name__)
 
@@ -16,8 +16,6 @@ class Tsk:
 
     def __repr__(self):
         return self.name
-
-
 
 
 async def plan(tsks: Iterable[Tsk], n=8):
