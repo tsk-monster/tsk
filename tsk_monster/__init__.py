@@ -73,13 +73,13 @@ def tsk(
 
 def shell(
         cmd: str, *,
-        need: List[Path] = [],
-        make: List[Path] = []):
+        inputs: List[Path] = [],
+        outputs: List[Path] = []):
 
     return tsk(
         cmd, lambda: asyncio.create_subprocess_shell(cmd),
-        inputs=need,
-        outputs=make)
+        inputs=inputs,
+        outputs=outputs)
 
 
 async def runner(tsks: Iterable[Tsk], parallelism=1):

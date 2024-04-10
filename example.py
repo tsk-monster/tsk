@@ -12,4 +12,4 @@ if __name__ == '__main__':
     run(
         shell(
             'wget -o img1.jpg https://picsum.photos/200',
-            make=[Path('img1.jpg')]))
+            outputs=[Path('img1.jpg')]))
