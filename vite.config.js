@@ -1,5 +1,4 @@
-module.exports = {
-    root: 'src',
+export default {
     build: {
         outDir: 'docs'
     }

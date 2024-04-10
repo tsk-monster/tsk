@@ -1,13 +1,42 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👾</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="src/index.css">
+  <title>tsk.monster</title>
+</head>
+
+<body>
+  <div class="row">
+    <div><img src="public/tsk.small.jpg" alt=""></div>
+    <div class="col">
+      <h1>tsk.monster</h1>
+      <h2>A cute little task runner.</h2>
+    </div>
+  </div>
+</body>
+
+<style>
+  img {
+    border-radius: 1em;
+    margin-right: 1em;
+  }
+
+  .row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+  .col {
+    display: flex;
+    flex-direction: column;
+  }
+</style>
+
 </html>
