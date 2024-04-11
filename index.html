@@ -32,13 +32,13 @@ if __name__ == '__main__':
         tsk(
             'Download image',
             action='wget -o img1.jpg https://picsum.photos/200',
-            outputs=[img1]),
+            makes=[img1]),
 
         tsk(
             'Resize image',
             action='convert img1.jpg -resize 100 img2.jpg',
-            inputs=[img1],
-            outputs=[img2]))
+            needs=[img1],
+            makes=[img2]))
             </code></pre>
 
     <h3>Features</h3>

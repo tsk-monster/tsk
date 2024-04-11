@@ -49,14 +49,16 @@ def tsk(
         needs: List[Path] = [],
         makes: List[Path] = []):
 
-    def str2func(s: str):
-        def f():
-            return asyncio.create_subprocess_shell(s)
+    def str2action(s: str):
+        async def action():
+            p = await asyncio.create_subprocess_shell(s)
+            print(p)
+            await p.communicate()
 
-        return f
+        return action
 
     if isinstance(action, str):
-        action = str2func(action)
+        action = str2action(action)
 
     async def gen():
         always_run = len(needs) == len(makes) == 0
@@ -73,6 +75,8 @@ def tsk(
             lg.info(f'SKIPPING: {description}')
 
         for m in makes:
+            lg.debug(f'Creating {m} {m.exists()}')
+
             if m.exists():
                 yield make(m)
             else:
@@ -92,8 +96,6 @@ async def runner(tsks: Iterable[Tsk], parallelism=100):
             tsks.popleft()
             for _ in range(min(parallelism, len(tsks)))]
 
-        lg.debug(f'Running {batch}')
-
         results = await asyncio.gather(
             *(anext(tsk.gen) for tsk in batch),
             return_exceptions=True)
@@ -101,6 +103,8 @@ async def runner(tsks: Iterable[Tsk], parallelism=100):
         assert len(batch) == len(results)
 
         for tsk, res in zip(batch, results):
+            lg.debug(f'{tsk} -> {res}')
+
             if isinstance(res, need):
                 if res.val in done:
                     tsks.append(tsk)
