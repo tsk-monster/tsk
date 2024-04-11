@@ -5,6 +5,11 @@ description = ""
 authors = ["Gilad Kutiel <giladk@mobileye.com>"]
 readme = "README.md"
 
+[tool.poetry.urls]
+Homepage = "https://tsk.monster"
+Documentation = "https://tsk.monster"
+Repository = "https://github.com/tsk-monster/tsk"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

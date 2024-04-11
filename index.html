@@ -11,26 +11,119 @@
 </head>
 
 <body>
-  <div class="row">
-    <div><img src="public/tsk.small.jpg" alt=""></div>
-    <div class="col">
-      <h1>tsk.monster</h1>
-      <h2>A cute little task runner.</h2>
+  <main>
+    <div class="header row">
+      <div><img src="public/tsk.small.jpg" alt=""></div>
+      <div class="col">
+        <h1>tsk.monster</h1>
+        <h2>A cute little task runner.</h2>
+      </div>
     </div>
-  </div>
+
+    <h3>Usage</h3>
+    <pre><code class="language-python">from pathlib import Path
+from tsk_monster import run, tsk
+
+if __name__ == '__main__':
+    img1 = Path('img1.jpg')
+    img2 = Path('img2.jpg')
+
+    run(
+        tsk(
+            'Download image',
+            action='wget -o img1.jpg https://picsum.photos/200',
+            outputs=[img1]),
+
+        tsk(
+            'Resize image',
+            action='convert img1.jpg -resize 100 img2.jpg',
+            inputs=[img1],
+            outputs=[img2]))
+            </code></pre>
+
+    <h3>Features</h3>
+    <ul>
+      <li>Zero dependencies</li>
+      <li>Concise API</li>
+      <li>Async and parallel execution</li>
+      <li>Tasks run only when needed</li>
+    </ul>
+
+    <h3>Custom Logic and Dependencies</h3>
+    <p>You can use any type of dependencies and write your own logic like so:</p>
+    <pre><code class="language-python">import asyncio
+
+from tsk_monster import Tsk, make, need, run
+
+if __name__ == '__main__':
+
+    async def ingredients():
+        print('Getting Water')
+        yield make('Water')
+        print('Getting Salt')
+        yield make('Salt')
+        print('Getting Oil')
+        yield make('Oil')
+        print('Getting Flour')
+        yield make('Flour')
+        print('Getting Cheese')
+        yield make('Cheese')
+        print('Getting Tomato')
+        yield make('Tomato')
+
+    async def dough():
+        yield need('Water')
+        yield need('Salt')
+        yield need('Oil')
+        yield need('Flour')
+
+        print('Making dough...')
+
+        await asyncio.sleep(3)
+
+        yield make('Dough')
+
+    async def pizza():
+        yield need('Dough')
+        yield need('Cheese')
+        yield need('Tomato')
+
+        print('Making pizza...')
+
+        await asyncio.sleep(2)
+
+        print('Pizza is ready!')
+
+        yield make('Pizza')
+
+    run(
+        Tsk('Get ingredients', ingredients()),
+        Tsk('Make dough', dough()),
+        Tsk('Make pizza', pizza()))</code></pre>
+  </main>
 </body>
 
 <style>
+  main {
+    width: 40em;
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+  }
+
   img {
     border-radius: 1em;
     margin-right: 1em;
+  }
+
+  .header {
+    height: 50vh;
   }
 
   .row {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
   }
 
   .col {
@@ -38,5 +131,7 @@
     flex-direction: column;
   }
 </style>
+
+<script type="module" src="src/main.ts"></script>
 
 </html>

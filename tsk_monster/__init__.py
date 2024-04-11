@@ -10,12 +10,12 @@ lg = logging.getLogger(__name__)
 
 
 @dataclass
-class input:
+class need:
     val: Any
 
 
 @dataclass
-class output:
+class make:
     val: Any
 
 
@@ -37,52 +37,51 @@ def none(items: Iterable[bool]):
 @dataclass
 class Tsk:
     name: str
-    gen: AsyncGenerator[Union[input, output, "Tsk"], None]
+    gen: AsyncGenerator[Union[need, make, "Tsk"], None]
 
     def __repr__(self):
         return self.name
 
 
 def tsk(
-        name: str, action: Callable[[], Awaitable], *,
-        inputs: List[Path] = [],
-        outputs: List[Path] = []):
+        description: str, *,
+        action: str | Callable[[], Awaitable],
+        needs: List[Path] = [],
+        makes: List[Path] = []):
+
+    def str2func(s: str):
+        def f():
+            return asyncio.create_subprocess_shell(s)
+
+        return f
+
+    if isinstance(action, str):
+        action = str2func(action)
 
     async def gen():
-        always_run = len(inputs) == len(outputs) == 0
+        always_run = len(needs) == len(makes) == 0
 
-        for n in inputs:
-            yield input(n)
+        for n in needs:
+            yield need(n)
 
-        if any(map(changed, inputs)) or not all(map(Path.exists, outputs)) or always_run:
-            lg.info(f'STARTING: {name}')
+        if any(map(changed, needs)) or not all(map(Path.exists, makes)) or always_run:
+            lg.info(f'STARTING: {description}')
             await action()
-            lg.info(f'DONE: {name}')
+            lg.info(f'DONE: {description}')
 
         else:
-            lg.info(f'SKIPPING: {name}')
+            lg.info(f'SKIPPING: {description}')
 
-        for m in outputs:
+        for m in makes:
             if m.exists():
-                yield output(m)
+                yield make(m)
             else:
                 lg.warning(f'Failed to create {m}.')
 
-    return Tsk(name, gen())
+    return Tsk(description, gen())
 
 
-def shell(
-        cmd: str, *,
-        inputs: List[Path] = [],
-        outputs: List[Path] = []):
-
-    return tsk(
-        cmd, lambda: asyncio.create_subprocess_shell(cmd),
-        inputs=inputs,
-        outputs=outputs)
-
-
-async def runner(tsks: Iterable[Tsk], parallelism=1):
+async def runner(tsks: Iterable[Tsk], parallelism=100):
 
     tsks = deque(tsks)
     wait = defaultdict(list)
@@ -93,6 +92,8 @@ async def runner(tsks: Iterable[Tsk], parallelism=1):
             tsks.popleft()
             for _ in range(min(parallelism, len(tsks)))]
 
+        lg.debug(f'Running {batch}')
+
         results = await asyncio.gather(
             *(anext(tsk.gen) for tsk in batch),
             return_exceptions=True)
@@ -100,23 +101,30 @@ async def runner(tsks: Iterable[Tsk], parallelism=1):
         assert len(batch) == len(results)
 
         for tsk, res in zip(batch, results):
-            if isinstance(res, input) and res.val not in done:
-                wait[res.val].append(tsk)
+            if isinstance(res, need):
+                if res.val in done:
+                    tsks.append(tsk)
+                else:
+                    wait[res.val].append(tsk)
+                continue
 
-            elif isinstance(res, output):
+            if isinstance(res, make):
                 done.add(res.val)
                 for w in wait.pop(res.val, []):
                     tsks.append(w)
-                tsks.append(tsk)
 
-            elif isinstance(res, Tsk):
+                tsks.append(tsk)
+                continue
+
+            if isinstance(res, Tsk):
                 tsks.append(res)
                 tsks.append(tsk)
+                continue
 
-            elif isinstance(res, StopAsyncIteration):
+            if isinstance(res, StopAsyncIteration):
                 pass
 
-            else:
+            if not isinstance(res, (need, make, Tsk, StopAsyncIteration)):
                 lg.error(f'Failed to run {tsk.name}: {res}')
 
     if wait:
