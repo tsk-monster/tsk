@@ -1,25 +1,19 @@
 import logging
 
-from tsk_monster import Job, need, prod, run
+from tsk_monster import run, tsk
 
 if __name__ == '__main__':
     logging.basicConfig(
         level=logging.DEBUG,
+        datefmt='%H:%M:%S',
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    def action():
-        print('lala')
-
-    def actions1():
-        yield action
-        yield prod(1)
-
-    def actions2():
-        yield need(1)
-        yield action
-
-    print()
     run(
-        Job('Job1', actions1()),
-        Job('Job2', actions2())
-    )
+        tsk(
+            'wget -O img1.jpg https://picsum.photos/200/300',
+            prods=['img1.jpg']),
+
+        tsk(
+            'convert -resize 100x img1.jpg img1.small.jpg',
+            needs=['img1.jpg'],
+            prods=['img1.small.jpg']))
