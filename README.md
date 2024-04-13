@@ -1,7 +1,8 @@
 # tsk.monster
 ## A cute little task runner.
 
-### Usage
+![](docs/tsk.small.jpg)
+
 ```python
 from tsk_monster import run, tsk
 
@@ -15,9 +16,3 @@ run(
         needs=['img1.jpg'],
         prods=['img1.small.jpg']))
 ```
-
-### Features
-- Zero dependencies
-- Simple and concise API
-- Parallel execution
-- Tasks are executed only when necessary
