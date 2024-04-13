@@ -12,9 +12,14 @@
 </head>
 
 <body>
+  <menu>
+    <a target='_blank' href="https://github.com/tsk-monster/tsk">
+      <img class='github' src="github.svg" alt="">
+    </a>
+  </menu>
   <main>
     <div class="header row">
-      <div><img src="./assets/tsk.small-CsgwjEcG.jpg" alt=""></div>
+      <div><img class='logo' src="./assets/tsk.small-CsgwjEcG.jpg" alt=""></div>
       <div class="col">
         <h1>tsk.monster</h1>
         <h2>A cute little task runner.</h2>
@@ -36,6 +41,24 @@ run(
 </body>
 
 <style>
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  menu {
+    margin: 0;
+    padding: .3em;
+    display: flex;
+    flex-direction: row;
+    background-color: #333;
+  }
+
+  pre {
+    font-size: 1.2em;
+  }
+
   main {
     width: 40em;
     display: flex;
@@ -43,7 +66,11 @@ run(
     margin: 0 auto;
   }
 
-  img {
+  img.github {
+    height: 3em;
+  }
+
+  img.logo {
     border-radius: 1em;
     margin-right: 1em;
   }
