@@ -1,7 +1,7 @@
 # tsk.monster
 ## A cute little task runner.
 
-![](docs/tsk.small.jpg)
+![](https://tsk.monster/tsk.small.jpg)
 
 ```python
 from tsk_monster import run, tsk
