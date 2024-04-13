@@ -1,10 +1,9 @@
-import asyncio
 import logging
-from collections import defaultdict, deque
+import queue
+import threading
+from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
-from typing import (Any, AsyncGenerator, Awaitable, Callable, Iterable, List,
-                    Union)
+from typing import Any, Callable, Generator
 
 lg = logging.getLogger(__name__)
 
@@ -15,128 +14,64 @@ class need:
 
 
 @dataclass
-class make:
+class prod:
     val: Any
 
 
-def changed(path: Path):
-    try:
-        tsk = path.with_suffix('.tsk')
-        if not tsk.exists():
-            return True
-
-        return tsk.stat().st_mtime < path.stat().st_mtime
-    finally:
-        tsk.touch()
-
-
-def none(items: Iterable[bool]):
-    return not any(items)
-
-
 @dataclass
-class Tsk:
-    name: str
-    gen: AsyncGenerator[Union[need, make, "Tsk"], None]
+class Job:
+    description: str
+    gen: Generator[need | prod | Callable, None, None]
 
     def __repr__(self):
-        return self.name
+        return self.description
 
 
-def tsk(
-        description: str, *,
-        action: str | Callable[[], Awaitable],
-        needs: List[Path] = [],
-        makes: List[Path] = []):
+def run(*jobs: Job):
+    q = queue.Queue[Job]()
+    needs = defaultdict(list)
+    prods = set()
 
-    def str2action(s: str):
-        async def action():
-            p = await asyncio.create_subprocess_shell(s)
-            print(p)
-            await p.communicate()
+    def worker():
+        while True:
+            job = q.get()
+            lg.debug(f'Processing job {job}')
 
-        return action
+            try:
+                item = next(job.gen)
+                lg.debug(f'Next item {item}')
 
-    if isinstance(action, str):
-        action = str2action(action)
+                if isinstance(item, Callable):
+                    item()
+                    q.put(job)
 
-    async def gen():
-        always_run = len(needs) == len(makes) == 0
+                if isinstance(item, need):
+                    if item.val in prods:
+                        q.put(job)
+                    else:
+                        needs[item.val].append(job)
 
-        for n in needs:
-            yield need(n)
+                if isinstance(item, prod):
+                    prods.add(item.val)
+                    q.put(job)
+                    jobs = needs.pop(item.val, set())
 
-        if any(map(changed, needs)) or not all(map(Path.exists, makes)) or always_run:
-            lg.info(f'STARTING: {description}')
-            await action()
-            lg.info(f'DONE: {description}')
+                    for job in jobs:
+                        q.put(job)
 
-        else:
-            lg.info(f'SKIPPING: {description}')
+            except StopIteration:
+                print(f'{job} completed')
 
-        for m in makes:
-            lg.debug(f'Creating {m} {m.exists()}')
+            finally:
+                q.task_done()
 
-            if m.exists():
-                yield make(m)
-            else:
-                lg.warning(f'Failed to create {m}.')
+    threading.Thread(
+        target=worker,
+        daemon=True).start()
 
-    return Tsk(description, gen())
+    for job in jobs:
+        q.put(job)
 
+    q.join()
 
-async def runner(tsks: Iterable[Tsk], parallelism=100):
-
-    tsks = deque(tsks)
-    wait = defaultdict(list)
-    done = set()
-
-    while tsks:
-        batch = [
-            tsks.popleft()
-            for _ in range(min(parallelism, len(tsks)))]
-
-        results = await asyncio.gather(
-            *(anext(tsk.gen) for tsk in batch),
-            return_exceptions=True)
-
-        assert len(batch) == len(results)
-
-        for tsk, res in zip(batch, results):
-            lg.debug(f'{tsk} -> {res}')
-
-            if isinstance(res, need):
-                if res.val in done:
-                    tsks.append(tsk)
-                else:
-                    wait[res.val].append(tsk)
-                continue
-
-            if isinstance(res, make):
-                done.add(res.val)
-                for w in wait.pop(res.val, []):
-                    tsks.append(w)
-
-                tsks.append(tsk)
-                continue
-
-            if isinstance(res, Tsk):
-                tsks.append(res)
-                tsks.append(tsk)
-                continue
-
-            if isinstance(res, StopAsyncIteration):
-                pass
-
-            if not isinstance(res, (need, make, Tsk, StopAsyncIteration)):
-                lg.error(f'Failed to run {tsk.name}: {res}')
-
-    if wait:
-        lg.warning(f'Could not run all tasks: {wait.values()}')
-        return
-
-    lg.info('All tasks finished.')
-
-
-def run(*tsks: Tsk, parallelism=1):
-    asyncio.run(runner(tsks, parallelism=parallelism))
+    print('All work completed')
