@@ -1,3 +1,18 @@
+'''A cute little task runner.
+
+Example:
+    >>> from tsk_monster import run, tsk
+    >>> run(
+    ...     tsk(
+    ...         'wget -O img1.jpg https://picsum.photos/200/300',
+    ...         prods=['img1.jpg']),
+    ...
+    ...     tsk(
+    ...         'convert -resize 100x img1.jpg img1.small.jpg',
+    ...         needs=['img1.jpg'],
+    ...         prods=['img1.small.jpg']))
+'''
+
 import logging
 import os
 import queue
@@ -32,6 +47,24 @@ class Job:
 
 
 def run(*jobs: Job):
+    '''Run jobs in parallel, respecting dependencies.
+
+    Args:
+        *jobs: A list of jobs to run.
+
+
+    Example:
+        >>> from tsk_monster import run, tsk
+        >>> run(
+        ...     tsk(
+        ...         'wget -O img1.jpg https://picsum.photos/200/300',
+        ...         prods=['img1.jpg']),
+        ...
+        ...     tsk(
+        ...         'convert -resize 100x img1.jpg img1.small.jpg',
+        ...         needs=['img1.jpg'],
+        ...         prods=['img1.small.jpg']))
+    '''
     q = queue.Queue[Job]()
     needs = defaultdict(list)
     prods = set()
@@ -126,7 +159,22 @@ def tsk(
         cmd: str | Cmd, *,
         needs: Paths = [],
         prods: Paths = []):
+    '''Create a file based task.
 
+    Args:
+        cmd: A command to run.
+        needs: A list of files that are needed.
+        prods: A list of files that will be produced.
+
+    Returns:
+        A job.
+
+    Example:
+        >>> from tsk_monster import tsk
+        >>> tsk(
+        ...     'wget -O img1.jpg https://picsum.photos/200/300',
+        ...     prods=['img1.jpg'])
+    '''
     if isinstance(cmd, str):
         cmd = Cmd(cmd, partial(os.system, cmd))
 

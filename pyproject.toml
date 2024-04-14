@@ -23,6 +23,9 @@ isort = "^5.13.2"
 pytest = "^8.1.1"
 pyright = "^1.1.357"
 pre-commit = "^3.7.0"
+mkdocs = "^1.5.3"
+mkdocstrings = {extras = ["python"], version = "^0.24.3"}
+mkdocs-material = "^9.5.17"
 
 [tool.poetry.dependencies]
 python = "3.10.*"
