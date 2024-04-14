@@ -1,6 +1,6 @@
 '''A cute little task runner.
 
-Example:
+Examples:
     >>> from tsk_monster import run, tsk
     >>> run(
     ...     tsk(
@@ -53,7 +53,7 @@ def run(*jobs: Job):
         *jobs: A list of jobs to run.
 
 
-    Example:
+    Examples:
         >>> from tsk_monster import run, tsk
         >>> run(
         ...     tsk(
@@ -161,6 +161,11 @@ def tsk(
         prods: Paths = []):
     '''Create a file based task.
 
+    Examples:
+        >>> tsk(
+        ...     'wget -O img1.jpg https://picsum.photos/200/300',
+        ...     prods=['img1.jpg'])
+
     Args:
         cmd: A command to run.
         needs: A list of files that are needed.
@@ -168,12 +173,6 @@ def tsk(
 
     Returns:
         A job.
-
-    Example:
-        >>> from tsk_monster import tsk
-        >>> tsk(
-        ...     'wget -O img1.jpg https://picsum.photos/200/300',
-        ...     prods=['img1.jpg'])
     '''
     if isinstance(cmd, str):
         cmd = Cmd(cmd, partial(os.system, cmd))

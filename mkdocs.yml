@@ -2,3 +2,10 @@ site_name: tsk.monster
 
 theme:
   name: "material"
+
+plugins:
+  - mkdocstrings
+
+nav:
+  - Home: index.md
+  - Tutorials: tutorials.md
