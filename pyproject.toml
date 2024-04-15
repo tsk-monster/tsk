@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tsk-monster"
-version = "0.0.7"
+version = "0.0.15"
 description = ""
 authors = ["Gilad Kutiel <giladk@mobileye.com>"]
 readme = "README.md"
@@ -29,3 +29,8 @@ mkdocs-material = "^9.5.17"
 
 [tool.poetry.dependencies]
 python = "3.10.*"
+typer = "^0.12.3"
+
+
+[tool.poetry.scripts]
+tsk = "tsk_monster:main"

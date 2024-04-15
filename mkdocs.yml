@@ -1,7 +1,10 @@
 site_name: tsk.monster
+repo_url: https://github.com/tsk-monster/tsk
+site_description: tsk.monster - a cute little task runner
 
 theme:
   name: "material"
+  locale: en
 
 plugins:
   - mkdocstrings
