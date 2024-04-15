@@ -24,4 +24,3 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Tutorials: tutorials.md
