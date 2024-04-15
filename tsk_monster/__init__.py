@@ -11,6 +11,21 @@ Examples:
     ...        'convert -resize 100x img.jpg img.small.jpg',
     ...        needs=['img.jpg'],
     ...        prods=['img.small.jpg'])
+    ...
+    ...    def publish():
+    ...        yield run(
+    ...            'poetry version patch',
+    ...            'git add -A',
+    ...            'git commit -am "$(poetry version)"',
+    ...            'poetry publish --build',
+    ...
+    ...            prods=['pyproject.toml'])
+    ...
+    ...        yield tsk(
+    ...            'mkdocs gh-deploy',
+    ...
+    ...            needs=['pyproject.toml'])
+
 '''
 
 import logging
