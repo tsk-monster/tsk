@@ -1,16 +1,16 @@
 '''A cute little task runner.
 
 Examples:
-    >>> from tsk_monster import run, tsk
-    >>> run(
-    ...     tsk(
-    ...         'wget -O img.jpg https://picsum.photos/200/300',
-    ...         prods=['img.jpg']),
+    >>> from tsk_monster import tsk
+    >>> def download_image():
+    ...    yield tsk(
+    ...        'wget -O img.jpg https://picsum.photos/200/300',
+    ...        prods=['img.jpg'])
     ...
-    ...     tsk(
-    ...         'convert -resize 100x img.jpg img.small.jpg',
-    ...         needs=['img.jpg'],
-    ...         prods=['img.small.jpg']))
+    ...    yield tsk(
+    ...        'convert -resize 100x img.jpg img.small.jpg',
+    ...        needs=['img.jpg'],
+    ...        prods=['img.small.jpg'])
 '''
 
 import logging
@@ -56,7 +56,7 @@ def job(*, needs=set(), prods=set(), cmds=[]):
 
 def sort_jobs(jobs: Iterable[Job]):
     def cmp(a: Job, b: Job):
-        if a.needs & b.prods and b.needs & a.prods:
+        if (a.needs & b.prods) and (b.needs & a.prods):
             raise ValueError(f'Jobs {a} and {b} are in a cycle')
 
         if a.prods & b.needs:
@@ -71,6 +71,11 @@ def sort_jobs(jobs: Iterable[Job]):
 
 
 def validate(jobs: Iterable[Job]):
+
+    for job in jobs:
+        if not isinstance(job, Job):
+            raise ValueError(f'Expected a Job, got {job}')
+
     needs = set()
     prods = set()
 
@@ -95,16 +100,16 @@ def run_jobs(*jobs: Job):
 
 
     Examples:
-        >>> from tsk_monster import run, tsk
-        >>> run(
-        ...     tsk(
-        ...         'wget -O img.jpg https://picsum.photos/200/300',
-        ...         prods=['img.jpg']),
+        >>> from tsk_monster import run_jobs, tsk
+        >>> run_jobs(
+        ...    tsk(
+        ...        'wget -O img.jpg https://picsum.photos/200/300',
+        ...        prods=['img.jpg']),
         ...
-        ...     tsk(
-        ...         'convert -resize 100x img.jpg img.small.jpg',
-        ...         needs=['img.jpg'],
-        ...         prods=['img.small.jpg']))
+        ...    tsk(
+        ...        'convert -resize 100x img.jpg img.small.jpg',
+        ...        needs=['img.jpg'],
+        ...        prods=['img.small.jpg']))
     '''
 
     q = queue.Queue[Job]()
@@ -121,7 +126,7 @@ def run_jobs(*jobs: Job):
 
                 try:
                     cmd = next(job.cmds)
-                    lg.info(f'Running {cmd.description}')
+                    lg.info(f'[PROCESSING]\t{cmd.description}')
                     future = executor.submit(cmd.action)
                     future.add_done_callback(done)
 
@@ -152,7 +157,7 @@ def run_jobs(*jobs: Job):
 
     q.join()
 
-    lg.info('All work completed')
+    lg.info('GOOD JOB!')
 
 
 Paths = List[Path | str] | List[Path]
@@ -170,10 +175,11 @@ def uptodate(needs: List[Path], prods: List[Path]):
         finally:
             tsk.touch()
 
-    if len(needs) == 0 and len(prods) == 0:
-        return False
+    need_to_run = len(prods) == 0 \
+        or any(map(changed, needs)) \
+        or not all(map(Path.exists, prods))
 
-    return any(map(changed, needs)) or not all(map(Path.exists, prods))
+    return not need_to_run
 
 
 def lazy_action(
@@ -183,6 +189,7 @@ def lazy_action(
         uptodate: Uptodate):
 
     if uptodate(needs, prods):
+        lg.info(f'[UPTODATE]\t{cmd.description}')
         return
 
     cmd.action()
@@ -195,18 +202,18 @@ def tsk(
         uptodate: Uptodate = uptodate) -> Job:
     '''Create a file based task.
 
-    Examples:
-        >>> tsk(
-        ...     'wget -O img.jpg https://picsum.photos/200/300',
-        ...     prods=['img.jpg'])
-
     Args:
-        cmds: A list of commands to run.
+        cmds: A list of commands to run sequentially.
         needs: A list of files that are needed.
         prods: A list of files that will be produced.
 
     Returns:
         A job.
+
+    Examples:
+        >>> t1 = tsk(
+        ...     'wget -O img.jpg https://picsum.photos/200/300',
+        ...     prods=['img.jpg'])
     '''
 
     def to_paths(paths: Paths) -> List[Path]:
@@ -227,6 +234,23 @@ def tsk(
                 needs=to_paths(needs),
                 prods=to_paths(prods),
                 uptodate=uptodate)) for cmd in cmd_list))
+
+
+def always_run(_, __):
+    return False
+
+
+def run(
+        *cmds: Cmd | str,
+        needs: Paths = [],
+        prods: Paths = []):
+    '''Always run.'''
+
+    return tsk(
+        *cmds,
+        needs=needs,
+        prods=prods,
+        uptodate=always_run)
 
 
 def load_tasks():
@@ -257,3 +281,8 @@ def tsk_monster(target: Annotated[str, typer.Argument(autocompletion=task_names)
 
 def main():
     app()
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

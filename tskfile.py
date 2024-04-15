@@ -1,8 +1,8 @@
-from tsk_monster import tsk
+from tsk_monster import run, tsk
 
 
 def publish():
-    yield tsk(
+    yield run(
         'poetry version patch',
         'git add -A',
         'git commit -am "$(poetry version)"',
@@ -14,3 +14,14 @@ def publish():
         'mkdocs gh-deploy',
 
         needs=['pyproject.toml'])
+
+
+def download_image():
+    yield tsk(
+        'wget -O img.jpg https://picsum.photos/200/300',
+        prods=['img.jpg'])
+
+    yield tsk(
+        'convert -resize 100x img.jpg img.small.jpg',
+        needs=['img.jpg'],
+        prods=['img.small.jpg'])
