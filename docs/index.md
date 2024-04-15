@@ -1,5 +1,3 @@
-# tsk.monster
-
-![tsk.monster](tsk.small.jpg)
-
-::: tsk_monster
+{%
+    include-markdown "../README.md"
+%}

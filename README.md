@@ -1,18 +1,18 @@
 # tsk.monster
 ## A cute little task runner.
 
-![](https://tsk.monster/tsk.small.jpg)
+![](https://tsk.monster/tsk.svg)
 
 ```python
-from tsk_monster import run, tsk
+from tsk_monster import run_jobs, tsk
 
-run(
+run_jobs(
     tsk(
-        'wget -O img1.jpg https://picsum.photos/200/300',
-        prods=['img1.jpg']),
+        'wget -O large.jpg https://picsum.photos/200/300',
+        prods=['large.jpg']),
 
     tsk(
-        'convert -resize 100x img1.jpg img1.small.jpg',
-        needs=['img1.jpg'],
-        prods=['img1.small.jpg']))
+        'convert -resize 100x large.jpg small.jpg',
+        needs=['large.jpg'],
+        prods=['small.jpg']))
 ```

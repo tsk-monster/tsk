@@ -4,10 +4,23 @@ site_description: tsk.monster - a cute little task runner
 
 theme:
   name: "material"
+  logo: "tsk.svg"
+  favicon: "tsk.svg"
   locale: en
+  features:
+    - content.code.copy
 
 plugins:
-  - mkdocstrings
+  - include-markdown
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
 
 nav:
   - Home: index.md
