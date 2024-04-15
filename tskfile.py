@@ -6,8 +6,9 @@ def publish():
         'poetry version patch',
         'git add -A',
         'git commit -am "$(poetry version)"',
+        'poetry publish --build',
         prods=['pyproject.toml'])
 
     yield tsk(
-        'mkdocs gh-deploy; poetry publish --build',
+        'mkdocs gh-deploy',
         needs=['pyproject.toml'])
