@@ -4,13 +4,13 @@ Examples:
     >>> from tsk_monster import run, tsk
     >>> run(
     ...     tsk(
-    ...         'wget -O img1.jpg https://picsum.photos/200/300',
-    ...         prods=['img1.jpg']),
+    ...         'wget -O img.jpg https://picsum.photos/200/300',
+    ...         prods=['img.jpg']),
     ...
     ...     tsk(
-    ...         'convert -resize 100x img1.jpg img1.small.jpg',
-    ...         needs=['img1.jpg'],
-    ...         prods=['img1.small.jpg']))
+    ...         'convert -resize 100x img.jpg img.small.jpg',
+    ...         needs=['img.jpg'],
+    ...         prods=['img.small.jpg']))
 '''
 
 import logging
@@ -98,13 +98,13 @@ def run_jobs(*jobs: Job):
         >>> from tsk_monster import run, tsk
         >>> run(
         ...     tsk(
-        ...         'wget -O img1.jpg https://picsum.photos/200/300',
-        ...         prods=['img1.jpg']),
+        ...         'wget -O img.jpg https://picsum.photos/200/300',
+        ...         prods=['img.jpg']),
         ...
         ...     tsk(
-        ...         'convert -resize 100x img1.jpg img1.small.jpg',
-        ...         needs=['img1.jpg'],
-        ...         prods=['img1.small.jpg']))
+        ...         'convert -resize 100x img.jpg img.small.jpg',
+        ...         needs=['img.jpg'],
+        ...         prods=['img.small.jpg']))
     '''
 
     q = queue.Queue[Job]()
@@ -201,7 +201,7 @@ def tsk(
         ...     prods=['img.jpg'])
 
     Args:
-        cmd: A command to run.
+        cmds: A list of commands to run.
         needs: A list of files that are needed.
         prods: A list of files that will be produced.
 

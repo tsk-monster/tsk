@@ -7,8 +7,10 @@ def publish():
         'git add -A',
         'git commit -am "$(poetry version)"',
         'poetry publish --build',
+
         prods=['pyproject.toml'])
 
     yield tsk(
         'mkdocs gh-deploy',
+
         needs=['pyproject.toml'])
