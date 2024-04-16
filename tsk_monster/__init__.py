@@ -39,7 +39,7 @@ def job(*, needs=set(), prods=set(), cmds=[]):
     return Job(needs, prods, cmds)
 
 
-def sort_jobs(jobs: Iterable[Job]):
+def sort(jobs: Iterable[Job]):
     def cmp(a: Job, b: Job):
         if (a.needs & b.prods) and (b.needs & a.prods):
             raise ValueError(f'Jobs {a} and {b} are in a cycle')
@@ -64,7 +64,7 @@ def validate(jobs: Iterable[Job]):
     needs = set()
     prods = set()
 
-    for job in sort_jobs(jobs):
+    for job in sort(jobs):
         if job.needs & job.prods:
             raise ValueError(f'Job {job} has conflicting needs and prods')
 
@@ -77,26 +77,7 @@ def validate(jobs: Iterable[Job]):
     return jobs
 
 
-def run_jobs(*jobs: Job):
-    '''Run jobs in parallel, respecting dependencies.
-
-    Args:
-        *jobs: A list of jobs to run.
-
-
-    Examples:
-        >>> from tsk_monster import run_jobs, tsk
-        >>> run_jobs(
-        ...    tsk(
-        ...        'wget -O img.jpg https://picsum.photos/200/300',
-        ...        prods=['img.jpg']),
-        ...
-        ...    tsk(
-        ...        'convert -resize 100x img.jpg img.small.jpg',
-        ...        needs=['img.jpg'],
-        ...        prods=['img.small.jpg']))
-    '''
-
+def run(*jobs: Job):
     q = queue.Queue[Job]()
     pending = []
 
@@ -146,10 +127,14 @@ def run_jobs(*jobs: Job):
 
 
 Paths = List[Path | str] | List[Path]
-Uptodate = Callable[[List[Path], List[Path]], bool]
+Uptodate = Callable[[List[Path], List[Path], List[Path]], bool]
 
 
-def uptodate(needs: List[Path], prods: List[Path]):
+def uptodate(
+        needs: List[Path],
+        prods: List[Path],
+        updts: List[Path]):
+
     def changed(path: Path):
         try:
             tsk = path.with_suffix('.tsk')
@@ -160,7 +145,9 @@ def uptodate(needs: List[Path], prods: List[Path]):
         finally:
             tsk.touch()
 
-    need_to_run = len(prods) == 0 \
+    need_to_run = \
+        len(updts) > 0 \
+        or len(prods) == 0 \
         or any(map(changed, needs)) \
         or not all(map(Path.exists, prods))
 
@@ -169,11 +156,9 @@ def uptodate(needs: List[Path], prods: List[Path]):
 
 def lazy_action(
         *, cmd: Cmd,
-        needs: List[Path],
-        prods: List[Path],
-        uptodate: Uptodate):
+        uptodate: Callable[[], bool]):
 
-    if uptodate(needs, prods):
+    if uptodate():
         lg.info(f'[UPTODATE]\t{cmd.description}')
         return
 
@@ -184,23 +169,8 @@ def tsk(
         *cmds: Cmd | str,
         needs: Paths = [],
         prods: Paths = [],
+        updts: Paths = [],
         uptodate: Uptodate = uptodate) -> Job:
-    '''Create a file based task.
-
-    Args:
-        cmds: A list of commands to run sequentially.
-        needs: A list of files that are needed.
-        prods: A list of files that will be produced.
-
-    Returns:
-        A job.
-
-    Examples:
-        >>> t1 = tsk(
-        ...     'wget -O img.jpg https://picsum.photos/200/300',
-        ...     prods=['img.jpg'])
-    '''
-
     def to_paths(paths: Paths) -> List[Path]:
         return [Path(p) if isinstance(p, str) else p for p in paths]
 
@@ -210,32 +180,21 @@ def tsk(
 
     return Job(
         set(to_paths(needs)),
-        set(to_paths(prods)),
+        set(to_paths(prods)) | set(to_paths(updts)),
         (Cmd(
             cmd.description,
             partial(
                 lazy_action,
                 cmd=cmd,
-                needs=to_paths(needs),
-                prods=to_paths(prods),
-                uptodate=uptodate)) for cmd in cmd_list))
+                uptodate=partial(
+                    uptodate,
+                    to_paths(needs),
+                    to_paths(prods),
+                    to_paths(updts)))) for cmd in cmd_list))
 
 
 def always_run(_, __):
     return False
-
-
-def run(
-        *cmds: Cmd | str,
-        needs: Paths = [],
-        prods: Paths = []):
-    '''Always run.'''
-
-    return tsk(
-        *cmds,
-        needs=needs,
-        prods=prods,
-        uptodate=always_run)
 
 
 def load_tasks():
@@ -261,7 +220,7 @@ def tsk_monster(target: Annotated[str, typer.Argument(autocompletion=task_names)
     members = getmembers(module, isgeneratorfunction)
     for name, value in members:
         if target == name:
-            run_jobs(*value())
+            run(*value())
 
 
 def main():
