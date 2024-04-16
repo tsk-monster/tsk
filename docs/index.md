@@ -38,3 +38,16 @@ tsk download_image
 ```
 tsk download_images
 ```
+
+#### Publish your project
+
+```py title="tskfile.py"
+{%
+    include-markdown "taskfile_3.py"
+    comments=false
+%}
+```
+
+```
+tsk publish
+```
