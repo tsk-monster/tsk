@@ -68,8 +68,8 @@ def validate(jobs: Iterable[Job]):
         if job.needs & job.prods:
             raise ValueError(f'Job {job} has conflicting needs and prods')
 
-        needs.update(job.needs)
-        prods.update(job.prods)
+        needs |= job.needs
+        prods |= job.prods
 
     if not needs.issubset(prods):
         raise ValueError(f'Dependencies not met: {needs - prods}')
