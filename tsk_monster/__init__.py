@@ -210,7 +210,7 @@ app = typer.Typer()
 
 
 @ app.command()
-def tsk_monster(target: Annotated[str, typer.Argument(autocompletion=task_names)]):
+def tsk_monster(targets: Annotated[List[str], typer.Argument(autocompletion=task_names)]):
     logging.basicConfig(
         level=logging.INFO,
         datefmt='%H:%M:%S',
@@ -218,9 +218,11 @@ def tsk_monster(target: Annotated[str, typer.Argument(autocompletion=task_names)
 
     module = __import__('tskfile')
     members = getmembers(module, isgeneratorfunction)
-    for name, value in members:
-        if target == name:
-            run(*value())
+    members = dict(members)
+
+    for target in targets:
+        lg.info(f'[TARGET]\t{target}')
+        run(*members[target]())
 
 
 def main():
