@@ -147,7 +147,6 @@ def uptodate(
 
     need_to_run = \
         len(updts) > 0 \
-        or len(prods) == 0 \
         or any(map(changed, needs)) \
         or not all(map(Path.exists, prods))
 
@@ -191,10 +190,6 @@ def tsk(
                     to_paths(needs),
                     to_paths(prods),
                     to_paths(updts)))) for cmd in cmd_list))
-
-
-def always_run(_, __):
-    return False
 
 
 def load_tasks():
