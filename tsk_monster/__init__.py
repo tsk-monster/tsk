@@ -177,6 +177,13 @@ def monster(*jobs: Job):
     lg.info('GOOD JOB!')
 
 
+def dummy(paths: Paths):
+    return Job(
+        needs=set(),
+        prods=set(paths),
+        cmds=(_ for _ in []))
+
+
 def tsk(
         *actions: Action | str,
         desc: str = '',

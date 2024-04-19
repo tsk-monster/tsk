@@ -1,4 +1,6 @@
-from tsk_monster import tsk
+from pathlib import Path
+
+from tsk_monster import dummy, tsk
 
 
 def publish():
@@ -44,3 +46,24 @@ def oops():
 
     yield tsk(
         exception, updts=['none.txt'])
+
+
+def thumbnails():
+    from functools import partial
+
+    from PIL import Image
+
+    def thumbnail(in_path: Path, out_path: Path):
+        img = Image.open(in_path)
+        img.thumbnail((100, 100))
+        img.save(out_path)
+
+    for in_path in Path('imgs').glob('*.jpg'):
+        out_path = Path('thumbs') / in_path.name
+
+        yield dummy([in_path])
+
+        yield tsk(
+            partial(thumbnail, in_path, out_path),
+            needs=[in_path],
+            prods=[out_path])

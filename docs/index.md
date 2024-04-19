@@ -14,7 +14,7 @@ Write a `tskfile.py`:
 
 ```py title="tskfile.py"
 {%
-    include-markdown "taskfile.py"
+    include-markdown "example_1.py"
     comments=false
 %}
 ```
@@ -30,7 +30,7 @@ tsk download_image
 
 ```py title="tskfile.py"
 {%
-    include-markdown "taskfile_2.py"
+    include-markdown "example_2.py"
     comments=false
 %}
 ```
@@ -43,11 +43,24 @@ tsk download_images
 
 ```py title="tskfile.py"
 {%
-    include-markdown "taskfile_3.py"
+    include-markdown "example_3.py"
     comments=false
 %}
 ```
 
 ```
 tsk publish
+```
+
+#### Dynamic Dependencies
+
+```py title="tskfile.py"
+{%
+    include-markdown "example_4.py"
+    comments=false
+%}
+```
+
+```
+tsk thumbnails
 ```
