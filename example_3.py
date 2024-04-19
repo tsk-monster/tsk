@@ -1,19 +1,18 @@
+from random import random
+
 from tsk_monster import tsk
 
 
-def publish():
+def lazy():
     yield tsk(
-        'poetry version patch',
-        updts=['pyproject.toml'])
+        'touch lazy.txt',
+        prods=['lazy.txt'])
+
+    if random() < 0.5:
+        yield tsk(
+            'touch lazy.txt',
+            updts=['lazy.txt'])
 
     yield tsk(
-        'mkdocs gh-deploy',
-        needs=['pyproject.toml'])
-
-    yield tsk(
-        'poetry publish --build',
-        needs=['pyproject.toml'])
-
-    yield tsk(
-        'git commit -am "$(poetry version)"',
-        needs=['pyproject.toml'])
+        'echo lazy.txt was updated',
+        needs=['lazy.txt'])

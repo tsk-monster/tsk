@@ -1,7 +1,7 @@
 from tsk_monster import tsk
 
 
-def download_image():
+def download_images():
     yield tsk(
         'wget -O large.jpg https://picsum.photos/200/300',
         prods=['large.jpg'])
