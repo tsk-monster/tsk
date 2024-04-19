@@ -35,10 +35,6 @@ Here is an example:
 %}
 ```
 
-```
-tsk download_images
-```
-
 ### Prevent Unnecessary Work
 
 There are three situations in which a task is executed:
@@ -57,10 +53,6 @@ In the following example, the first task will be executed only if the file `lazy
 %}
 ```
 
-```
-tsk publish
-```
-
 ### Dynamic Execution
 
 ```py title="tskfile.py"
@@ -68,8 +60,4 @@ tsk publish
     include-markdown "example_4.py"
     comments=false
 %}
-```
-
-```
-tsk thumbnails
 ```
