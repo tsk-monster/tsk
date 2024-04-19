@@ -30,6 +30,7 @@ mkdocs-include-markdown-plugin = "^6.0.5"
 [tool.poetry.dependencies]
 python = "^3.10"
 typer = "^0.12.3"
+dill = "^0.3.8"
 
 
 [tool.poetry.scripts]

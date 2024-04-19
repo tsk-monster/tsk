@@ -7,25 +7,66 @@ from dataclasses import dataclass
 from functools import cmp_to_key, partial
 from inspect import getmembers, isgeneratorfunction
 from pathlib import Path
-from typing import Any, Callable, Generator, Iterable, List, Set
+from typing import (Any, Callable, Generator, Generic, Iterable, List, Set,
+                    TypeVar)
 
 import typer
+from dill import dumps, loads
 from typing_extensions import Annotated
+
+T = TypeVar('T')
+Paths = List[Path | str] | List[Path]
+Action = Callable[[], Any]
+Predicate = Callable[[], bool]
 
 lg = logging.getLogger(__name__)
 
 
-@dataclass
+class Function(Generic[T]):
+    def __init__(self, action: Action) -> None:
+        self.action = dumps(action)
+
+    def __call__(self) -> T:
+        action = loads(self.action)
+        return action()
+
+
 class Cmd:
-    description: str
-    action: Callable[[], Any]
+    action: Function[Any]
+    need_to_run: Function[bool]
+
+    def __init__(
+            self, *,
+            desc: str,
+            action: Action,
+            need_to_run: Predicate):
+
+        self.desc = desc
+        self.action = Function(action)
+        self.need_to_run = Function(need_to_run)
 
     @classmethod
-    def from_str(cls, cmd: str):
-        return cls(cmd, partial(os.system, cmd))
+    def from_str(cls, cmd: str, need_to_run: Predicate):
+        return cls(
+            desc=cmd,
+            action=partial(os.system, cmd),
+            need_to_run=need_to_run)
 
-    def __repr__(self) -> str:
-        return self.description
+    def __call__(self):
+        try:
+            if self.need_to_run():
+                lg.info(f'[RUNNING] {self}')
+                return self.action()
+            else:
+                lg.info(f'[SKIPPING] {self}')
+        except Exception as e:
+            lg.error(e)
+
+    def __repr__(self):
+        return self.desc
+
+    def __str__(self):
+        return self.desc
 
 
 @dataclass
@@ -35,7 +76,11 @@ class Job:
     cmds: Generator[Cmd, None, None]
 
 
-def job(*, needs=set(), prods=set(), cmds=[]):
+def job(*,
+        cmds: Generator[Cmd, None, None] = (_ for _ in []),
+        needs=set(),
+        prods=set()):
+
     return Job(needs, prods, cmds)
 
 
@@ -77,7 +122,8 @@ def validate(jobs: Iterable[Job]):
     return jobs
 
 
-def run(*jobs: Job):
+def monster(*jobs: Job):
+    lg.debug(f'Running jobs: {jobs}')
     q = queue.Queue[Job]()
     pending = []
 
@@ -87,13 +133,17 @@ def run(*jobs: Job):
         with ProcessPoolExecutor() as executor:
             def run_job(job: Job):
                 def done(future: Future):
-                    future.result()
-                    run_job(job)
+                    try:
+                        future.result()
+                        run_job(job)
+                    except Exception as e:
+                        lg.error(e)
+                        exit(1)
 
                 try:
                     cmd = next(job.cmds)
-                    lg.info(f'[PROCESSING]\t{cmd.description}')
-                    future = executor.submit(cmd.action)
+                    lg.info(f'[PROCESSING] {cmd}')
+                    future = executor.submit(cmd)
                     future.add_done_callback(done)
 
                 except StopIteration:
@@ -119,6 +169,7 @@ def run(*jobs: Job):
         daemon=True).start()
 
     for job in validate(jobs):
+        lg.debug(f'[ENQUEUE] {job}')
         q.put(job)
 
     q.join()
@@ -126,98 +177,78 @@ def run(*jobs: Job):
     lg.info('GOOD JOB!')
 
 
-Paths = List[Path | str] | List[Path]
-Uptodate = Callable[[List[Path], List[Path], List[Path]], bool]
-
-
-def uptodate(
-        needs: List[Path],
-        prods: List[Path],
-        updts: List[Path]):
-
-    def changed(path: Path):
-        try:
-            tsk = path.with_suffix('.tsk')
-            if not tsk.exists():
-                return True
-
-            return tsk.stat().st_mtime < path.stat().st_mtime
-        finally:
-            tsk.touch()
-
-    need_to_run = \
-        len(updts) > 0 \
-        or any(map(changed, needs)) \
-        or not all(map(Path.exists, prods))
-
-    return not need_to_run
-
-
-def lazy_action(
-        *, cmd: Cmd,
-        uptodate: Callable[[], bool]):
-
-    if uptodate():
-        lg.info(f'[UPTODATE]\t{cmd.description}')
-        return
-
-    cmd.action()
-
-
 def tsk(
-        *cmds: Cmd | str,
+        *actions: Action | str,
+        desc: str = '',
         needs: Paths = [],
         prods: Paths = [],
-        updts: Paths = [],
-        uptodate: Uptodate = uptodate) -> Job:
+        updts: Paths = []) -> Job:
+
     def to_paths(paths: Paths) -> List[Path]:
         return [Path(p) if isinstance(p, str) else p for p in paths]
 
-    cmd_list = [
-        Cmd.from_str(cmd) if isinstance(cmd, str) else cmd
-        for cmd in cmds]
+    def need_to_run():
+        def changed(path: Path):
+            try:
+                tsk = path.with_suffix('.tsk')
+                if not tsk.exists():
+                    return True
+
+                return tsk.stat().st_mtime < path.stat().st_mtime
+            finally:
+                tsk.touch()
+
+        return \
+            len(updts) > 0 \
+            or any(map(changed, to_paths(needs))) \
+            or not all(map(Path.exists, to_paths(prods)))
+
+    cmds = (
+        Cmd.from_str(
+            action,
+            need_to_run) if isinstance(action, str)
+
+        else Cmd(
+            desc=desc,
+            action=action,
+            need_to_run=need_to_run)
+
+        for action in actions)
 
     return Job(
         set(to_paths(needs)),
         set(to_paths(prods)) | set(to_paths(updts)),
-        (Cmd(
-            cmd.description,
-            partial(
-                lazy_action,
-                cmd=cmd,
-                uptodate=partial(
-                    uptodate,
-                    to_paths(needs),
-                    to_paths(prods),
-                    to_paths(updts)))) for cmd in cmd_list))
-
-
-def load_tasks():
-    module = __import__('tskfile')
-    return getmembers(module, isgeneratorfunction)
-
-
-def task_names(prefix: str):
-    return [name for name, _ in load_tasks() if name.startswith(prefix)]
+        cmds)
 
 
 app = typer.Typer()
 
 
-@ app.command()
+def task_names(prefix: str):
+    def load_tasks():
+        module = __import__('tskfile')
+        return getmembers(module, isgeneratorfunction)
+
+    return [name for name, _ in load_tasks() if name.startswith(prefix)]
+
+
+@app.command()
 def tsk_monster(targets: Annotated[List[str], typer.Argument(autocompletion=task_names)]):
+    from rich.logging import RichHandler
+
     logging.basicConfig(
         level=logging.INFO,
         datefmt='%H:%M:%S',
-        format='%(asctime)s - %(levelname)s - %(message)s')
+        format='%(asctime)s - %(message)s',
+        handlers=[RichHandler()])
 
     module = __import__('tskfile')
     members = getmembers(module, isgeneratorfunction)
     members = dict(members)
 
     for target in targets:
-        lg.info(f'[TARGET]\t{target}')
-        run(*members[target]())
+        lg.info(f'[TARGET] {target}')
+        monster(*members[target]())
 
 
 def main():

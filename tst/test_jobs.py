@@ -1,6 +1,8 @@
+from functools import partial
+
 import pytest
 
-from tsk_monster import job
+from tsk_monster import Cmd, job, monster, tsk
 
 
 def test_sort_jobs():
@@ -31,3 +33,16 @@ def test_validate_jobs():
 
     with pytest.raises(ValueError):
         validate([job(needs={1}, prods={2}), job(needs={2}, prods={3})])
+
+
+def test_cmd():
+    cmd = Cmd(
+        action=partial(lambda: 2),
+        need_to_run=lambda: True)
+
+    assert cmd() == 2
+
+
+def test_monster():
+    monster(
+        tsk(lambda: 2, updts=['none.txt']))
