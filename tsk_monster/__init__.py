@@ -5,6 +5,7 @@ import threading
 from concurrent.futures import Future, ProcessPoolExecutor
 from dataclasses import dataclass
 from functools import cmp_to_key, partial
+from hashlib import shake_128
 from inspect import getmembers, isgeneratorfunction
 from pathlib import Path
 from typing import (Any, Callable, Generator, Generic, Iterable, List, Set,
@@ -194,10 +195,11 @@ def tsk(
     def to_paths(paths: Paths) -> List[Path]:
         return [Path(p) if isinstance(p, str) else p for p in paths]
 
-    def need_to_run():
+    def need_to_run(action: str | Action):
         def changed(path: Path):
             try:
-                tsk = path.with_suffix('.tsk')
+                hash = shake_128(dumps(action)).hexdigest(8)
+                tsk = path.with_suffix(f'.{hash}.tsk')
                 if not tsk.exists():
                     return True
 
@@ -213,12 +215,12 @@ def tsk(
     cmds = (
         Cmd.from_str(
             action,
-            need_to_run) if isinstance(action, str)
+            partial(need_to_run, action)) if isinstance(action, str)
 
         else Cmd(
             desc=desc,
             action=action,
-            need_to_run=need_to_run)
+            need_to_run=partial(need_to_run, action))
 
         for action in actions)
 
@@ -239,7 +241,7 @@ def task_names(prefix: str):
     return [name for name, _ in load_tasks() if name.startswith(prefix)]
 
 
-@app.command()
+@ app.command()
 def tsk_monster(targets: Annotated[List[str], typer.Argument(autocompletion=task_names)]):
     from rich.logging import RichHandler
 
@@ -263,5 +265,9 @@ def main():
 
 
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
+
+    def lala():
+        print('lala')
+
+    d = dumps(lala)
+    print(hash('baba'))
