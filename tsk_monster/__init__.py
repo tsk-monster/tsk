@@ -37,9 +37,9 @@ class Cmd:
 
     def __init__(
             self, *,
-            desc: str,
             action: Action,
-            need_to_run: Predicate):
+            need_to_run: Predicate,
+            desc=''):
 
         self.desc = desc
         self.action = Function(action)

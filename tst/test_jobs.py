@@ -46,3 +46,11 @@ def test_cmd():
 def test_monster():
     monster(
         tsk(lambda: 2, updts=['none.txt']))
+
+
+def test_exception():
+    def oops():
+        raise Exception('oops')
+
+    monster(
+        tsk(oops, updts=['none.txt']))

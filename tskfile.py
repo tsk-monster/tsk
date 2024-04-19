@@ -36,3 +36,11 @@ def download_image(i=0):
 def download_images():
     for i in range(10):
         yield from download_image(i)
+
+
+def oops():
+    def exception():
+        raise Exception('oops')
+
+    yield tsk(
+        exception, updts=['none.txt'])
