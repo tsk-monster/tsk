@@ -178,11 +178,24 @@ def monster(*jobs: Job):
     lg.info('GOOD JOB!')
 
 
-def dummy(paths: Paths):
+def actions2cmds(): ...
+
+
+def dummy(prods: Paths):
     return Job(
         needs=set(),
-        prods=set(paths),
+        prods=set(prods),
         cmds=(_ for _ in []))
+
+
+def run(*actions: Action | str):
+    return Job(
+        needs=set(),
+        prods=set(),
+        cmds=(
+            Cmd.from_str(action, lambda: True) if isinstance(action, str)
+            else Cmd(action=action, need_to_run=lambda: True)
+            for action in actions))
 
 
 def tsk(
