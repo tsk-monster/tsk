@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from tsk_monster import dummy, tsk
+from tsk_monster import exist, tsk
 
 
 def thumbnails():
@@ -15,7 +15,8 @@ def thumbnails():
     for in_path in Path('imgs').glob('*.jpg'):
         out_path = Path('thumbs') / in_path.name
 
-        yield dummy([in_path])
+        # Tells tsk.monster that this file exists
+        yield exist([in_path])
 
         yield tsk(
             partial(thumbnail, in_path, out_path),
