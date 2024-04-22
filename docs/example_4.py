@@ -16,7 +16,7 @@ def thumbnails():
         out_path = Path('thumbs') / in_path.name
 
         # Tells tsk.monster that this file exists
-        yield exist([in_path])
+        yield exist(in_path)
 
         yield tsk(
             partial(thumbnail, in_path, out_path),

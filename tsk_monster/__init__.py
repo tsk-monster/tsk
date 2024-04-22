@@ -181,7 +181,7 @@ def monster(*jobs: Job):
 def actions2cmds(): ...
 
 
-def exist(*paths: Paths):
+def exist(*paths: Path | str):
     return Job(
         needs=set(),
         prods=set(paths),
