@@ -181,10 +181,10 @@ def monster(*jobs: Job):
 def actions2cmds(): ...
 
 
-def dummy(prods: Paths):
+def exist(paths: Paths):
     return Job(
         needs=set(),
-        prods=set(prods),
+        prods=set(paths),
         cmds=(_ for _ in []))
 
 
