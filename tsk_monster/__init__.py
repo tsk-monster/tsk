@@ -184,7 +184,7 @@ def actions2cmds(): ...
 def exist(*paths: Path | str):
     return Job(
         needs=set(),
-        prods=set(paths),
+        prods={Path(p) for p in paths},
         cmds=(_ for _ in []))
 
 
