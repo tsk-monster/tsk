@@ -188,10 +188,18 @@ def exist(*paths: Path | str):
         cmds=(_ for _ in []))
 
 
-def run(*actions: Action | str):
+def _to_paths(paths: Paths) -> List[Path]:
+    return [Path(p) if isinstance(p, str) else p for p in paths]
+
+
+def run(
+        *actions: Action | str,
+        needs: Paths = [],
+        prods: Paths = []):
+
     return Job(
-        needs=set(),
-        prods=set(),
+        needs=set(_to_paths(needs)),
+        prods=set(_to_paths(prods)),
         cmds=(
             Cmd.from_str(action, lambda: True) if isinstance(action, str)
             else Cmd(action=action, need_to_run=lambda: True)
@@ -204,9 +212,6 @@ def tsk(
         needs: Paths = [],
         prods: Paths = [],
         updts: Paths = []) -> Job:
-
-    def to_paths(paths: Paths) -> List[Path]:
-        return [Path(p) if isinstance(p, str) else p for p in paths]
 
     def need_to_run(action: str | Action):
         def changed(path: Path):
@@ -222,8 +227,8 @@ def tsk(
 
         return \
             len(updts) > 0 \
-            or any(map(changed, to_paths(needs))) \
-            or not all(map(Path.exists, to_paths(prods)))
+            or any(map(changed, _to_paths(needs))) \
+            or not all(map(Path.exists, _to_paths(prods)))
 
     cmds = (
         Cmd.from_str(
@@ -238,8 +243,8 @@ def tsk(
         for action in actions)
 
     return Job(
-        set(to_paths(needs)),
-        set(to_paths(prods)) | set(to_paths(updts)),
+        set(_to_paths(needs)),
+        set(_to_paths(prods)) | set(_to_paths(updts)),
         cmds)
 
 
