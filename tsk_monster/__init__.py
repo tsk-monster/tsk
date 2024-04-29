@@ -204,17 +204,23 @@ def monster(*jobs: Job):
     lg.info('GOOD JOB!')
 
 
-def actions2cmds(): ...
-
-
 def exist(*paths: Path | str):
+    '''
+    Signal that a set of paths already exist.
+
+    Args:
+        paths: A set of paths that already exist.
+
+    Returns:
+        A dummy job that does nothing.
+    '''
     return Job(
         needs=set(),
         prods={Path(p) for p in paths},
         cmds=(_ for _ in []))
 
 
-def _to_paths(paths: Paths) -> List[Path]:
+def to_paths(paths: Paths) -> List[Path]:
     return [Path(p) if isinstance(p, str) else p for p in paths]
 
 
@@ -222,10 +228,17 @@ def run(
         *actions: Action | str,
         needs: Paths = [],
         prods: Paths = []):
+    '''
+    Create a job that always runs a set of actions.
 
+    Args:
+        actions: A set of actions that need to be run.
+        needs: A set of artifacts that are required by this job.
+        prods: A set of artifacts that are produced by this job.
+    '''
     return Job(
-        needs=set(_to_paths(needs)),
-        prods=set(_to_paths(prods)),
+        needs=set(to_paths(needs)),
+        prods=set(to_paths(prods)),
         cmds=(
             Cmd.from_str(action, lambda: True) if isinstance(action, str)
             else Cmd(action=action, need_to_run=lambda: True)
@@ -238,7 +251,19 @@ def tsk(
         needs: Paths = [],
         prods: Paths = [],
         updts: Paths = []) -> Job:
+    '''
+    Create a job. The job will only run if any of the following conditions are met:
+    - Any of the artifacts in `needs` has been updated since the last run.
+    - Any of the artifacts in `prods` does not exist.
+    - The `updts` list is not empty.
 
+    Args:
+        actions: A set of actions that need to be run.
+        desc: A description of the job.
+        needs: A set of artifacts that are required by this job.
+        prods: A set of artifacts that are produced by this job.
+        updts: A set of artifacts that are updated by this job.
+    '''
     def need_to_run(action: str | Action):
         def changed(path: Path):
             try:
@@ -253,8 +278,8 @@ def tsk(
 
         return \
             len(updts) > 0 \
-            or any(map(changed, _to_paths(needs))) \
-            or not all(map(Path.exists, _to_paths(prods)))
+            or any(map(changed, to_paths(needs))) \
+            or not all(map(Path.exists, to_paths(prods)))
 
     cmds = (
         Cmd.from_str(
@@ -269,8 +294,8 @@ def tsk(
         for action in actions)
 
     return Job(
-        set(_to_paths(needs)),
-        set(_to_paths(prods)) | set(_to_paths(updts)),
+        set(to_paths(needs)),
+        set(to_paths(prods)) | set(to_paths(updts)),
         cmds)
 
 
@@ -285,7 +310,7 @@ def task_names(prefix: str):
     return [name for name, _ in load_tasks() if name.startswith(prefix)]
 
 
-@ app.command()
+@app.command()
 def tsk_monster(targets: Annotated[List[str], typer.Argument(autocompletion=task_names)]):
     from rich.logging import RichHandler
 
@@ -306,12 +331,3 @@ def tsk_monster(targets: Annotated[List[str], typer.Argument(autocompletion=task
 
 def main():
     app()
-
-
-if __name__ == "__main__":
-
-    def lala():
-        print('lala')
-
-    d = dumps(lala)
-    print(hash('baba'))
