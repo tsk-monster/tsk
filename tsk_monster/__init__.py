@@ -1,3 +1,6 @@
+'''
+tsk.monster - A cute little tsk runner
+'''
 import logging
 import os
 import queue
@@ -33,6 +36,13 @@ class Function(Generic[T]):
 
 
 class Cmd:
+    '''
+    A cmd is an action that is conditionally run based on a predicate.
+
+    Args:
+        action: The action that needs to be run.
+        need_to_run: A predicate that determines if the action needs to be run.
+    '''
     action: Function[Any]
     need_to_run: Function[bool]
 
@@ -72,6 +82,16 @@ class Cmd:
 
 @dataclass
 class Job:
+    '''
+    A job is a set of commands that need to be run in order to produce a set of artifacts.
+    Artifacts can be files, directories, or any other kind of object.
+    A job can also depend on other artifacts that are produced by other jobs.
+
+    Args:
+        needs: A set of artifacts that are required by this job.
+        prods: A set of artifacts that are produced by this job.
+        cmds: A generator of commands that need to be run in order to produce the artifacts.
+    '''
     needs: Set[Any]
     prods: Set[Any]
     cmds: Generator[Cmd, None, None]
@@ -124,6 +144,12 @@ def validate(jobs: Iterable[Job]):
 
 
 def monster(*jobs: Job):
+    '''
+    Executes a set of jobs in parallel.
+
+    Args:
+        jobs: A set of jobs that need to be run.
+    '''
     lg.debug(f'Running jobs: {jobs}')
     q = queue.Queue[Job]()
     pending = []

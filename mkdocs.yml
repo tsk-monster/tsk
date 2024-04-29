@@ -12,6 +12,8 @@ theme:
 
 plugins:
   - include-markdown
+  - search
+  - mkdocstrings
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -24,3 +26,4 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - API: api.md
