@@ -10,7 +10,7 @@ from inspect import getmembers, isgeneratorfunction
 from pathlib import Path
 from queue import Queue
 from multiprocessing import Pool
-from multiprocessing import pool
+from multiprocessing import pool as mp_pool
 from threading import RLock, Thread
 from typing import (Any, Callable, Generator, Generic, Iterable, List, Set,
                     TypeVar)
@@ -250,7 +250,7 @@ def task_names(prefix: str):
     return [name for name, _ in load_tasks() if name.startswith(prefix)]
 
 
-def monster(*jobs: Job, pool: pool.Pool):
+def monster(*jobs: Job, pool: mp_pool.Pool):
     '''
     Executes a set of jobs in parallel.
 
