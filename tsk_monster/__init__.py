@@ -5,7 +5,7 @@ import logging
 import os
 import queue
 import threading
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import Executor, ProcessPoolExecutor
 from dataclasses import dataclass
 from functools import cmp_to_key, partial
 from hashlib import shake_128
@@ -266,13 +266,10 @@ def worker(
             for cmd in job.cmds:
                 lg.info(f'[PROCESSING] {cmd}')
 
-                if exec.submit(cmd).result():
-                    lg.error(f'[FAILED] {cmd}')
+                res = exec.submit(cmd).result()
 
-                    exec.shutdown(
-                        wait=False,
-                        cancel_futures=True)
-
+                if res:
+                    lg.error(f'[FAILED] {cmd} {res}')
                     os._exit(1)
 
                 lg.info(f'[DONE] {cmd}')
@@ -283,11 +280,14 @@ def worker(
                 q.put(pending.pop())
                 q.task_done()
 
+        except Exception as e:
+            lg.error(e)
+
         finally:
             q.task_done()
 
 
-def monster(*jobs: Job):
+def monster(*jobs: Job, executor: Executor):
     '''
     Executes a set of jobs in parallel.
 
@@ -307,12 +307,11 @@ def monster(*jobs: Job):
         lg.debug(f'[ENQUEUE] {job}')
         q.put(job)
 
-    with ProcessPoolExecutor() as exec:
-        for _ in range(cpu_count):
-            threading.Thread(
-                args=(q, exec, pending, prods),
-                target=worker,
-                daemon=True).start()
+    for _ in range(cpu_count):
+        threading.Thread(
+            args=(q, executor, pending, prods),
+            target=worker,
+            daemon=True).start()
 
     q.join()
 
@@ -333,9 +332,13 @@ def tsk_monster(targets: Annotated[List[str], typer.Argument(autocompletion=task
     members = getmembers(module, isgeneratorfunction)
     members = dict(members)
 
-    for target in targets:
-        lg.info(f'[TARGET] {target}')
-        monster(*members[target]())
+    with ProcessPoolExecutor() as executor:
+        for target in targets:
+            lg.info(f'[TARGET] {target}')
+            jobs = members[target]
+            monster(
+                *jobs(),
+                executor=executor)
 
 
 def main():
@@ -353,9 +356,11 @@ if __name__ == '__main__':
 
     print('Starting')
 
-    monster(
-        run('sleep -1'),
-        run('sleep 5'),
-        run('sleep 5'))
+    with ProcessPoolExecutor() as executor:
+        monster(
+            run('sleep -1'),
+            run('sleep 5'),
+            run('sleep 5'),
+            executor=executor)
 
     print('Done')
