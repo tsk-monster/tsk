@@ -67,7 +67,7 @@ class Cmd:
     def __call__(self):
         try:
             if self.need_to_run():
-                lg.info(f'[👾]{self}')
+                lg.info(f'[👾] {self}')
                 return self.action()
             else:
                 lg.info(f'[👍] {self}')
