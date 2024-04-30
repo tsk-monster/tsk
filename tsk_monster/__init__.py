@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from functools import cmp_to_key, partial
 from hashlib import shake_128
 from inspect import getmembers, isgeneratorfunction
-from multiprocessing import Value
 from pathlib import Path
 from typing import (Any, Callable, Generator, Generic, Iterable, List, Set,
                     TypeVar)
@@ -250,6 +249,44 @@ def task_names(prefix: str):
     return [name for name, _ in load_tasks() if name.startswith(prefix)]
 
 
+def worker(
+        q: queue.Queue[Job],
+        exec: ProcessPoolExecutor,
+        pending: List[Job],
+        prods: Set[Any]):
+
+    while True:
+        job = q.get()
+
+        if not job.needs.issubset(prods):
+            pending.append(job)
+            continue
+
+        try:
+            for cmd in job.cmds:
+                lg.info(f'[PROCESSING] {cmd}')
+
+                if exec.submit(cmd).result():
+                    lg.error(f'[FAILED] {cmd}')
+
+                    exec.shutdown(
+                        wait=False,
+                        cancel_futures=True)
+
+                    os._exit(1)
+
+                lg.info(f'[DONE] {cmd}')
+
+            prods.update(job.prods)
+
+            while pending:
+                q.put(pending.pop())
+                q.task_done()
+
+        finally:
+            q.task_done()
+
+
 def monster(*jobs: Job):
     '''
     Executes a set of jobs in parallel.
@@ -258,63 +295,28 @@ def monster(*jobs: Job):
         jobs: A set of jobs that need to be run.
     '''
     lg.debug(f'Running jobs: {jobs}')
-    q = queue.Queue[Job]()
-    pending = []
-    prods = set()
-
-    def worker(success):
-        with ProcessPoolExecutor(max_workers=1) as process:
-            while True:
-                job = q.get()
-
-                if not job.needs.issubset(prods):
-                    pending.append(job)
-                    continue
-
-                try:
-                    for cmd in job.cmds:
-                        lg.info(f'[PROCESSING] {cmd}')
-
-                        if process.submit(cmd).result():
-                            success.value = False
-                            raise Exception(f'[FAILED] {cmd}')
-
-                        lg.info(f'[DONE] {cmd}')
-
-                    prods.update(job.prods)
-
-                    while pending:
-                        q.put(pending.pop())
-                        q.task_done()
-
-                except Exception as e:
-                    success.value = False
-                    lg.error(e)
-
-                finally:
-                    q.task_done()
-
-    success = Value('b', True)
 
     cpu_count = os.cpu_count()
     assert cpu_count is not None, 'Could not determine the number of CPUs'
 
-    for _ in range(cpu_count):
-        threading.Thread(
-            target=worker,
-            args=(success,),
-            daemon=True).start()
+    pending = []
+    prods = set()
+    q = queue.Queue()
 
     for job in validate(jobs):
         lg.debug(f'[ENQUEUE] {job}')
         q.put(job)
 
+    with ProcessPoolExecutor() as exec:
+        for _ in range(cpu_count):
+            threading.Thread(
+                args=(q, exec, pending, prods),
+                target=worker,
+                daemon=True).start()
+
     q.join()
 
-    if not success.value:
-        lg.error('SOME JOBS FAILED!')
-    else:
-        lg.info('GOOD JOB!')
+    lg.info('GOOD JOB!')
 
 
 @app.command()
@@ -353,7 +355,7 @@ if __name__ == '__main__':
 
     monster(
         run('sleep -1'),
-        run('sleep 2'),
-        run('sleep 2'))
+        run('sleep 5'),
+        run('sleep 5'))
 
     print('Done')
