@@ -5,11 +5,12 @@ import logging
 import os
 import queue
 import threading
-from concurrent.futures import Future, ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from functools import cmp_to_key, partial
 from hashlib import shake_128
 from inspect import getmembers, isgeneratorfunction
+from multiprocessing import Value
 from pathlib import Path
 from typing import (Any, Callable, Generator, Generic, Iterable, List, Set,
                     TypeVar)
@@ -143,67 +144,6 @@ def validate(jobs: Iterable[Job]):
     return jobs
 
 
-def monster(*jobs: Job):
-    '''
-    Executes a set of jobs in parallel.
-
-    Args:
-        jobs: A set of jobs that need to be run.
-    '''
-    lg.debug(f'Running jobs: {jobs}')
-    q = queue.Queue[Job]()
-    pending = []
-
-    def worker():
-        prods = set()
-
-        with ProcessPoolExecutor() as executor:
-            def run_job(job: Job):
-                def done(future: Future):
-                    try:
-                        future.result()
-                        run_job(job)
-                    except Exception as e:
-                        lg.error(e)
-                        exit(1)
-
-                try:
-                    cmd = next(job.cmds)
-                    lg.info(f'[PROCESSING] {cmd}')
-                    future = executor.submit(cmd)
-                    future.add_done_callback(done)
-
-                except StopIteration:
-                    prods.update(job.prods)
-
-                    while pending:
-                        q.put(pending.pop())
-                        q.task_done()
-
-                    q.task_done()
-
-            while True:
-                job = q.get()
-
-                if not job.needs.issubset(prods):
-                    pending.append(job)
-                    continue
-
-                run_job(job)
-
-    threading.Thread(
-        target=worker,
-        daemon=True).start()
-
-    for job in validate(jobs):
-        lg.debug(f'[ENQUEUE] {job}')
-        q.put(job)
-
-    q.join()
-
-    lg.info('GOOD JOB!')
-
-
 def exist(*paths: Path | str):
     '''
     Signal that a set of paths already exist.
@@ -310,6 +250,73 @@ def task_names(prefix: str):
     return [name for name, _ in load_tasks() if name.startswith(prefix)]
 
 
+def monster(*jobs: Job):
+    '''
+    Executes a set of jobs in parallel.
+
+    Args:
+        jobs: A set of jobs that need to be run.
+    '''
+    lg.debug(f'Running jobs: {jobs}')
+    q = queue.Queue[Job]()
+    pending = []
+    prods = set()
+
+    def worker(success):
+        with ProcessPoolExecutor(max_workers=1) as process:
+            while True:
+                job = q.get()
+
+                if not job.needs.issubset(prods):
+                    pending.append(job)
+                    continue
+
+                try:
+                    for cmd in job.cmds:
+                        lg.info(f'[PROCESSING] {cmd}')
+
+                        if process.submit(cmd).result():
+                            success.value = False
+                            raise Exception(f'[FAILED] {cmd}')
+
+                        lg.info(f'[DONE] {cmd}')
+
+                    prods.update(job.prods)
+
+                    while pending:
+                        q.put(pending.pop())
+                        q.task_done()
+
+                except Exception as e:
+                    success.value = False
+                    lg.error(e)
+
+                finally:
+                    q.task_done()
+
+    success = Value('b', True)
+
+    cpu_count = os.cpu_count()
+    assert cpu_count is not None, 'Could not determine the number of CPUs'
+
+    for _ in range(cpu_count):
+        threading.Thread(
+            target=worker,
+            args=(success,),
+            daemon=True).start()
+
+    for job in validate(jobs):
+        lg.debug(f'[ENQUEUE] {job}')
+        q.put(job)
+
+    q.join()
+
+    if not success.value:
+        lg.error('SOME JOBS FAILED!')
+    else:
+        lg.info('GOOD JOB!')
+
+
 @app.command()
 def tsk_monster(targets: Annotated[List[str], typer.Argument(autocompletion=task_names)]):
     from rich.logging import RichHandler
@@ -331,3 +338,22 @@ def tsk_monster(targets: Annotated[List[str], typer.Argument(autocompletion=task
 
 def main():
     app()
+
+
+if __name__ == '__main__':
+    from rich.logging import RichHandler
+
+    logging.basicConfig(
+        level=logging.DEBUG,
+        datefmt='%H:%M:%S',
+        format='%(asctime)s - %(message)s',
+        handlers=[RichHandler()])
+
+    print('Starting')
+
+    monster(
+        run('sleep -1'),
+        run('sleep 2'),
+        run('sleep 2'))
+
+    print('Done')
