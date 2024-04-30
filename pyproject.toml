@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tsk-monster"
-version = "0.0.54"
+version = "0.0.55"
 description = ""
 authors = ["Gilad Kutiel <giladk@mobileye.com>"]
 readme = "README.md"
