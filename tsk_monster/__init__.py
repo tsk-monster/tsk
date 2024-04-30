@@ -3,14 +3,15 @@ tsk.monster - A cute little tsk runner
 '''
 import logging
 import os
-import queue
-import threading
-from concurrent.futures import Executor, ProcessPoolExecutor
 from dataclasses import dataclass
 from functools import cmp_to_key, partial
 from hashlib import shake_128
 from inspect import getmembers, isgeneratorfunction
 from pathlib import Path
+from queue import Queue
+from multiprocessing import Pool
+from multiprocessing import pool
+from threading import RLock, Thread
 from typing import (Any, Callable, Generator, Generic, Iterable, List, Set,
                     TypeVar)
 
@@ -66,10 +67,10 @@ class Cmd:
     def __call__(self):
         try:
             if self.need_to_run():
-                lg.info(f'[RUNNING] {self}')
+                lg.info(f'[👾]{self}')
                 return self.action()
             else:
-                lg.info(f'[SKIPPING] {self}')
+                lg.info(f'[👍] {self}')
         except Exception as e:
             lg.error(e)
 
@@ -249,45 +250,7 @@ def task_names(prefix: str):
     return [name for name, _ in load_tasks() if name.startswith(prefix)]
 
 
-def worker(
-        q: queue.Queue[Job],
-        exec: ProcessPoolExecutor,
-        pending: List[Job],
-        prods: Set[Any]):
-
-    while True:
-        job = q.get()
-
-        if not job.needs.issubset(prods):
-            pending.append(job)
-            continue
-
-        try:
-            for cmd in job.cmds:
-                lg.info(f'[PROCESSING] {cmd}')
-
-                res = exec.submit(cmd).result()
-
-                if res:
-                    lg.error(f'[FAILED] {cmd} {res}')
-                    os._exit(1)
-
-                lg.info(f'[DONE] {cmd}')
-
-            prods.update(job.prods)
-
-            while pending:
-                q.put(pending.pop())
-                q.task_done()
-
-        except Exception as e:
-            lg.error(e)
-
-        finally:
-            q.task_done()
-
-
-def monster(*jobs: Job, executor: Executor):
+def monster(*jobs: Job, pool: pool.Pool):
     '''
     Executes a set of jobs in parallel.
 
@@ -299,17 +262,54 @@ def monster(*jobs: Job, executor: Executor):
     cpu_count = os.cpu_count()
     assert cpu_count is not None, 'Could not determine the number of CPUs'
 
+    lg.debug(f'Running on {cpu_count} CPUs')
+
+    q = Queue()
+    lock = RLock()
     pending = []
     prods = set()
-    q = queue.Queue()
+
+    def worker():
+        while True:
+            job = q.get()
+
+            with lock:
+                if not job.needs.issubset(prods):
+                    pending.append(job)
+                    continue
+
+            try:
+                for cmd in job.cmds:
+                    lg.debug(f'[⏳] {cmd}')
+
+                    # res = exec.submit(cmd).result()
+                    # res = cmd()
+                    res = pool.apply(cmd)
+
+                    lg.debug(f'[🏁] {cmd} {res}')
+
+                    if res:
+                        lg.error(f'[💩] {cmd} {res}')
+                        os._exit(1)
+
+                with lock:
+                    prods.update(job.prods)
+                    while pending:
+                        q.put(pending.pop())
+                        q.task_done()
+
+            except Exception as e:
+                lg.error(e)
+
+            finally:
+                q.task_done()
 
     for job in validate(jobs):
         lg.debug(f'[ENQUEUE] {job}')
         q.put(job)
 
     for _ in range(cpu_count):
-        threading.Thread(
-            args=(q, executor, pending, prods),
+        Thread(
             target=worker,
             daemon=True).start()
 
@@ -332,13 +332,13 @@ def tsk_monster(targets: Annotated[List[str], typer.Argument(autocompletion=task
     members = getmembers(module, isgeneratorfunction)
     members = dict(members)
 
-    with ProcessPoolExecutor() as executor:
+    with Pool() as pool:
         for target in targets:
             lg.info(f'[TARGET] {target}')
             jobs = members[target]
             monster(
                 *jobs(),
-                executor=executor)
+                pool=pool)
 
 
 def main():
@@ -356,11 +356,11 @@ if __name__ == '__main__':
 
     print('Starting')
 
-    with ProcessPoolExecutor() as executor:
+    with Pool() as pool:
         monster(
-            run('sleep -1'),
             run('sleep 5'),
             run('sleep 5'),
-            executor=executor)
+            run('sleep 5'),
+            pool=pool)
 
     print('Done')

@@ -19,3 +19,18 @@ def publish():
     yield tsk(
         'git commit -am "$(poetry version)"',
         needs=['pyproject.toml'])
+
+
+def download_images():
+    for i in range(5):
+        large = f'large_{i:02}.jpg'
+        small = f'small_{i:02}.jpg'
+
+        yield tsk(
+            f'wget -nv -O {large} https://picsum.photos/200/300',
+            prods=[large])
+
+        yield tsk(
+            f'convert -resize 100x {large} {small}',
+            needs=[large],
+            prods=[small])
